@@ -39,9 +39,16 @@ class MatrixHandler:
     def show_image_from_url(self, url, duration=10.0):
         def worker():
             try:
-                with urllib.request.urlopen(url) as response:
+                print(f"[DEBUG] Fetching image from: {url}")
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    if response.status != 200:
+                        print(f"[ERROR] HTTP {response.status} when fetching image")
+                        return
                     img_data = response.read()
+                    print(f"[DEBUG] Downloaded {len(img_data)} bytes")
+                
                 img = Image.open(io.BytesIO(img_data))
+                print(f"[DEBUG] Image format: {img.format}, size: {img.size}, mode: {img.mode}")
                 
                 # Handle animated GIFs
                 if getattr(img, "is_animated", False):
@@ -51,6 +58,7 @@ class MatrixHandler:
                         frames.append(frame.convert("RGB").copy())
                         delays.append(max(0.01, frame.info.get("duration", 70) / 1000.0))
                     
+                    print(f"[DEBUG] Playing animated GIF with {len(frames)} frames")
                     start_time = time.time()
                     frame_idx = 0
                     while not self.stop_event.is_set() and (time.time() - start_time < duration):
@@ -60,6 +68,7 @@ class MatrixHandler:
                         frame_idx = (frame_idx + 1) % len(frames)
                 else:
                     # Static image
+                    print(f"[DEBUG] Displaying static image")
                     resized = ImageOps.fit(img.convert("RGB"), (64, 64), method=Image.Resampling.LANCZOS)
                     self.matrix.SetImage(resized)
                     start_time = time.time()
@@ -67,7 +76,9 @@ class MatrixHandler:
                         time.sleep(0.1)
                         
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"[ERROR] Image display failed: {e}")
+                import traceback
+                traceback.print_exc()
             finally:
                 self.current_job = None
                 

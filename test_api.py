@@ -6,8 +6,8 @@ import requests
 import time
 import json
 
-# BASE_URL = "http://localhost:9191"
-BASE_URL = "http://192.168.1.137:9191"
+BASE_URL = "http://localhost:9191"
+# BASE_URL = "http://192.168.1.137:9191"
 
 def test_status():
     """Test the status endpoint"""
