@@ -32,12 +32,16 @@ class MatrixHandler:
         opts.pwm_bits = 11
         opts.brightness = 70
         opts.hardware_mapping = "regular"
+        opts.gpio_slowdown = 2
         self.matrix = RGBMatrix(options=opts)
         self.stop_event = threading.Event()
         self.current_job = None
         
     def show_image_from_url(self, url, duration=10.0):
         def worker():
+            import tempfile
+            import os
+            temp_file = None
             try:
                 print(f"[DEBUG] Fetching image from: {url}")
                 with urllib.request.urlopen(url, timeout=10) as response:
@@ -47,7 +51,12 @@ class MatrixHandler:
                     img_data = response.read()
                     print(f"[DEBUG] Downloaded {len(img_data)} bytes")
                 
-                img = Image.open(io.BytesIO(img_data))
+                # Save to temporary file instead of using BytesIO
+                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
+                    tmp_file.write(img_data)
+                    temp_file = tmp_file.name
+                
+                img = Image.open(temp_file)
                 print(f"[DEBUG] Image format: {img.format}, size: {img.size}, mode: {img.mode}")
                 
                 # Handle animated GIFs
@@ -63,14 +72,14 @@ class MatrixHandler:
                     frame_idx = 0
                     while not self.stop_event.is_set() and (time.time() - start_time < duration):
                         resized = ImageOps.fit(frames[frame_idx], (64, 64), method=Image.Resampling.LANCZOS)
-                        self.matrix.SetImage(resized)
+                        self.matrix.SetImage(resized.convert('RGB'))
                         time.sleep(delays[frame_idx])
                         frame_idx = (frame_idx + 1) % len(frames)
                 else:
                     # Static image
                     print(f"[DEBUG] Displaying static image")
                     resized = ImageOps.fit(img.convert("RGB"), (64, 64), method=Image.Resampling.LANCZOS)
-                    self.matrix.SetImage(resized)
+                    self.matrix.SetImage(resized.convert('RGB'))
                     start_time = time.time()
                     while not self.stop_event.is_set() and (time.time() - start_time < duration):
                         time.sleep(0.1)
@@ -80,6 +89,9 @@ class MatrixHandler:
                 import traceback
                 traceback.print_exc()
             finally:
+                # Clean up temporary file
+                if temp_file and os.path.exists(temp_file):
+                    os.unlink(temp_file)
                 self.current_job = None
                 
         self.stop_event.clear()
@@ -108,7 +120,7 @@ class MatrixHandler:
                         frame.paste(right_part, (0, 0))
                         frame.paste(left_part, (right_part.width, 0))
                     
-                    self.matrix.SetImage(frame)
+                    self.matrix.SetImage(frame.convert('RGB'))
                     time.sleep(0.02)
             except Exception as e:
                 print(f"Error: {e}")
@@ -125,7 +137,7 @@ class MatrixHandler:
                 img = Image.new("RGB", (64, 64), "navy")
                 draw = ImageDraw.Draw(img)
                 draw.text((1, 1), f"Weather:\n{template}", fill=(255, 255, 0))
-                self.matrix.SetImage(img)
+                self.matrix.SetImage(img.convert('RGB'))
                 start_time = time.time()
                 while not self.stop_event.is_set() and (time.time() - start_time < duration):
                     time.sleep(0.1)
