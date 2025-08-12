@@ -44,15 +44,20 @@ class MatrixHandler:
             temp_file = None
             try:
                 print(f"[DEBUG] Fetching image from: {url}")
-                with urllib.request.urlopen(url, timeout=10) as response:
+                
+                # Create request with proper headers
+                req = urllib.request.Request(url)
+                req.add_header('User-Agent', 'Mozilla/5.0 (compatible; RGB-Matrix-Server/1.0)')
+                
+                with urllib.request.urlopen(req, timeout=10) as response:
                     if response.status != 200:
                         print(f"[ERROR] HTTP {response.status} when fetching image")
                         return
                     img_data = response.read()
                     print(f"[DEBUG] Downloaded {len(img_data)} bytes")
                 
-                # Save to temporary file instead of using BytesIO
-                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
+                # Save to temporary file WITHOUT forcing extension - let PIL detect format
+                with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                     tmp_file.write(img_data)
                     temp_file = tmp_file.name
                 
