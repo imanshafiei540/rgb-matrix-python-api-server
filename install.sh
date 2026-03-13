@@ -68,7 +68,7 @@ fi
 # --- Install Python dependencies ---
 info "Installing Python dependencies..."
 "${INSTALL_DIR}/venv/bin/pip" install --upgrade pip -q
-"${INSTALL_DIR}/venv/bin/pip" install Pillow requests -q
+"${INSTALL_DIR}/venv/bin/pip" install "Pillow==9.5.0" requests -q
 
 # Install rgbmatrix - try the real library first, fall back to emulator
 if "${INSTALL_DIR}/venv/bin/python3" -c "import rgbmatrix" 2>/dev/null; then

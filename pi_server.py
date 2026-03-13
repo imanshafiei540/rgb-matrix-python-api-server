@@ -12,6 +12,67 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 from weather_service import weather_service, get_condition_from_code
 from weather_icons import create_weather_display, create_weather_icon
 
+
+def detect_pi_model():
+    """Detect Raspberry Pi model from /proc/device-tree/model"""
+    try:
+        with open("/proc/device-tree/model", "r") as f:
+            model = f.read().strip().rstrip("\x00")
+            return model
+    except FileNotFoundError:
+        pass
+    # Fallback: parse /proc/cpuinfo
+    try:
+        with open("/proc/cpuinfo", "r") as f:
+            for line in f:
+                if line.startswith("Model"):
+                    return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return "Unknown"
+
+
+def detect_gpio_slowdown():
+    """
+    Auto-detect the optimal gpio_slowdown value based on Pi model.
+    
+    Mapping (based on CPU speed / GPIO bus speed):
+      - Pi 5              → 4  (fast CPU)
+      - Pi 4 / CM4        → 4
+      - Pi 3 / CM3        → 3  (not commonly used with matrices but included)
+      - Pi Zero 2 W       → 2  (BCM2710, slower than Pi 4)
+      - Pi Zero / Zero W  → 1  (single-core, very slow)
+      - Pi 2              → 2
+      - Pi 1 / CM1        → 1
+      - Unknown           → 3  (safe middle ground)
+    """
+    model = detect_pi_model()
+    model_lower = model.lower()
+
+    # Determine slowdown from model string
+    if "pi 5" in model_lower or "raspberry pi 5" in model_lower:
+        slowdown = 4
+    elif "pi 4" in model_lower or "compute module 4" in model_lower:
+        slowdown = 4
+    elif "pi 3" in model_lower or "compute module 3" in model_lower:
+        slowdown = 3
+    elif "zero 2" in model_lower:
+        slowdown = 2
+    elif "zero" in model_lower:
+        slowdown = 1
+    elif "pi 2" in model_lower:
+        slowdown = 2
+    elif "pi model" in model_lower:
+        # Original Pi 1 variants: "Raspberry Pi Model B", "Model A", etc.
+        slowdown = 1
+    else:
+        slowdown = 3  # Safe default
+
+    print(f"[INFO] Detected Pi model: {model}", flush=True)
+    print(f"[INFO] Auto-selected gpio_slowdown = {slowdown}", flush=True)
+    return slowdown
+
+
 class MatrixHandler:
     def __init__(self):
         opts = RGBMatrixOptions()
@@ -22,8 +83,7 @@ class MatrixHandler:
         opts.pwm_bits = 11
         opts.brightness = 70
         opts.hardware_mapping = "regular"
-        opts.gpio_slowdown = 4 # Tested with RPI4
-        # opts.gpio_slowdown = 2 # Tested with RPI ZERO 2W
+        opts.gpio_slowdown = detect_gpio_slowdown()
         self.matrix = RGBMatrix(options=opts)
         self.rotation = 90  # 0, 90, 180, or 270 degrees clockwise
         self.stop_event = threading.Event()
