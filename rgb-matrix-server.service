@@ -1,0 +1,21 @@
+[Unit]
+Description=RGB Matrix Python API Server
+After=network.target
+
+[Service]
+Type=simple
+# RGB Matrix requires root for GPIO access
+User=root
+WorkingDirectory=/opt/rgb-matrix-server
+ExecStart=/opt/rgb-matrix-server/venv/bin/python3 /opt/rgb-matrix-server/pi_server.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+ProtectHome=read-only
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

@@ -5,9 +5,20 @@
       "name": "Run RGBMatrix Server",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/app.py",
+      "program": "${workspaceFolder}/pi_server.py",
       "console": "integratedTerminal",
       "args": []
+    },
+    {
+      "name": "Run RGBMatrix Server (sudo)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "127.0.0.1",
+        "port": 5678
+      },
+      "preLaunchTask": "Run RGBMatrix Server (sudo)",
+      "justMyCode": true
     }
   ]
 }
